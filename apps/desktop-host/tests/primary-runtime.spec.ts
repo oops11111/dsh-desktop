@@ -23,7 +23,7 @@ async function fixture() {
   const root = join(directory, 'home', 'dsh-runtimes', 'dsh-primary-runtime')
   const manifest: PrimaryRuntimeManifest = {
     desktopVersion: '1.0.0', platform: process.platform === 'win32' ? 'win32' : 'darwin', arch: process.arch,
-    components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0', numpy: '2.3.5', pandas: '3.0.1' },
+    components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0' },
     pythonPackages: { 'python-docx': '1.2.0', 'python-pptx': '1.0.2', openpyxl: '3.1.5' },
   }
   const paths = workspaceDependencyPaths(source, manifest)
@@ -38,7 +38,7 @@ async function fixture() {
 }
 
 it.each(['win32', 'darwin'])('returns %s interpreter and package paths', (platform) => {
-  const manifest: PrimaryRuntimeManifest = { desktopVersion: '1', platform, arch: 'x64', components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0', numpy: '2.3.5', pandas: '3.0.1' } }
+  const manifest: PrimaryRuntimeManifest = { desktopVersion: '1', platform, arch: 'x64', components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0' } }
   const paths = workspaceDependencyPaths('/runtime', manifest)
   expect(paths.pythonDistributions).toEqual({})
   expect(paths.python).toBe(join('/runtime', 'dependencies', 'python', ...(platform === 'win32' ? ['python.exe'] : ['bin', 'python3'])))
@@ -130,21 +130,11 @@ it('rejects malformed metadata and incompatible targets', async () => {
   await expect(readPrimaryRuntime(source)).rejects.toThrow('invalid metadata')
 })
 
-it.each([['numpy', 'numpy'], ['pandas', 'pandas'], ['Numpy', 'numpy'], ['PANDAS', 'pandas']] as const)('rejects conflicting %s component and distribution versions', async (distribution, name) => {
-  const { source, manifest } = await fixture()
-  await writeFile(join(source, 'runtime.json'), JSON.stringify({ ...manifest, pythonPackages: { [distribution]: '0.0.1' } }))
-  await expect(readPrimaryRuntime(source)).rejects.toThrow(`conflicting ${name} distribution version`)
-  const consistent = { ...manifest, pythonPackages: { [distribution]: manifest.components[name] } }
-  await writeFile(join(source, 'runtime.json'), JSON.stringify(consistent))
-  expect(await readPrimaryRuntime(source)).toEqual(consistent)
-})
-
 it.each([
   { payloadDigest: 'invalid' },
   { pythonPackages: ['python-docx'] },
   { pythonPackages: { 'python-docx': '../escape' } },
   { pythonPackages: { '../escape': '1.2.0' } },
-  { pythonPackages: { numpy: '2.3.5', Numpy: '2.3.5' } },
   { pythonPackages: { Pillow: '12.3.0', pillow: '12.3.0' } },
   { pythonPackages: { typing_extensions: '4.16.0', 'typing.extensions': '4.16.0' } },
 ])('rejects invalid locked payload metadata: %j', async (invalid) => {

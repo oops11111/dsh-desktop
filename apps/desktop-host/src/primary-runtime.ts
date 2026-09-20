@@ -16,8 +16,6 @@ export interface PrimaryRuntimeManifest {
     readonly python: string
     readonly node: string
     readonly pnpm: string
-    readonly numpy: string
-    readonly pandas: string
   }
 }
 
@@ -46,7 +44,7 @@ export async function readPrimaryRuntime(root: string): Promise<PrimaryRuntimeMa
   if (typeof record.desktopVersion !== 'string' || record.desktopVersion.length === 0
     || !['win32', 'darwin'].includes(String(record.platform)) || !['x64', 'arm64'].includes(String(record.arch))
     || typeof components !== 'object' || components === null
-    || !['python', 'node', 'pnpm', 'numpy', 'pandas'].every(key => /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/u.test(String((components as Record<string, unknown>)[key])))
+    || !['python', 'node', 'pnpm'].every(key => /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/u.test(String((components as Record<string, unknown>)[key])))
     || (record.payloadDigest !== undefined && (typeof record.payloadDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(record.payloadDigest)))
     || (packages !== undefined && (typeof packages !== 'object' || packages === null || Array.isArray(packages)
       || !Object.entries(packages).every(([name, version]) => /^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(name)
@@ -55,14 +53,8 @@ export async function readPrimaryRuntime(root: string): Promise<PrimaryRuntimeMa
   }
   const manifest = value as PrimaryRuntimeManifest
   const entries = Object.entries(manifest.pythonPackages ?? {})
-  const distributions = new Map(entries.map(([name, version]) => [name.toLowerCase().replace(/[-_.]+/gu, '-'), version]))
+  const distributions = new Set(entries.map(([name]) => name.toLowerCase().replace(/[-_.]+/gu, '-')))
   if (distributions.size !== entries.length) throw new Error('primary runtime: invalid metadata')
-  for (const name of ['numpy', 'pandas'] as const) {
-    const version = distributions.get(name)
-    if (version !== undefined && version !== manifest.components[name]) {
-      throw new Error(`primary runtime: conflicting ${name} distribution version`)
-    }
-  }
   return manifest
 }
 

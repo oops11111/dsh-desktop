@@ -252,16 +252,11 @@ The [Desktop runtime lock](apps/desktop/scripts/primary-runtime-lock.json) recor
 | --- | --- | --- |
 | [`et-xmlfile`](https://foss.heptapod.net/openpyxl/et_xmlfile) | 2.0.0 | MIT |
 | [`lxml`](https://github.com/lxml/lxml) | 6.1.3 | BSD-3-Clause |
-| [`numpy`](https://github.com/numpy/numpy) | 2.3.5 | BSD-3-Clause |
 | [`openpyxl`](https://foss.heptapod.net/openpyxl/openpyxl) | 3.1.5 | MIT |
-| [`pandas`](https://github.com/pandas-dev/pandas) | 3.0.1 | BSD-3-Clause |
 | [`pillow`](https://github.com/python-pillow/Pillow) | 12.3.0 | MIT-CMU |
-| [`python-dateutil`](https://github.com/dateutil/dateutil) | 2.9.0.post0 | Apache-2.0 OR BSD-3-Clause |
 | [`python-docx`](https://github.com/python-openxml/python-docx) | 1.2.0 | MIT |
 | [`python-pptx`](https://github.com/scanny/python-pptx) | 1.0.2 | MIT |
-| [`six`](https://github.com/benjaminp/six) | 1.17.0 | MIT |
 | [`typing-extensions`](https://github.com/python/typing_extensions) | 4.16.0 | PSF-2.0 |
-| [`tzdata`](https://github.com/python/tzdata) | 2025.2 | Apache-2.0 |
 | [`xlsxwriter`](https://github.com/jmcnamara/XlsxWriter) | 3.2.9 | BSD-2-Clause |
 
 ## First-party native packages
