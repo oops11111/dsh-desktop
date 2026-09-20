@@ -124,8 +124,12 @@ async function main(): Promise<void> {
     const targetName = resolveDesktopBuildTarget()
     const target = { platform: process.platform, arch: targetName.endsWith('arm64') ? 'arm64' : 'x64' }
     const modules = join(BUILD_ROOT, 'node_modules')
-    const officeManifest = JSON.parse(readFileSync(join(modules, '@deepseek-ai/libreoffice-kit/package.json'), 'utf8'))
-    const officeEngine = selectOfficeEngine(officeManifest, target)
+    // The default Desktop dependency graph carries no LibreOffice kit: a lighter payload
+    // without Office-to-PDF preview. A composition that opts back in resolves an engine as before.
+    const officeManifestPath = join(modules, '@deepseek-ai/libreoffice-kit/package.json')
+    const officeEngine = existsSync(officeManifestPath)
+      ? selectOfficeEngine(JSON.parse(readFileSync(officeManifestPath, 'utf8')), target)
+      : undefined
     mkdirSync(DSH_OUTPUT_ROOT, { recursive: true })
     cpSync(modules, join(DSH_OUTPUT_ROOT, 'node_modules'), {
       recursive: true, dereference: true,
@@ -140,7 +144,8 @@ async function main(): Promise<void> {
         throw new Error(`desktop runtime: missing private Host file ${file}`)
       }
     }
-    if (!existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', `libreoffice-kit-${officeEngine}`, 'prebuilds.json'))) {
+    if (officeEngine !== undefined
+      && !existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', `libreoffice-kit-${officeEngine}`, 'prebuilds.json'))) {
       throw new Error(`desktop runtime: missing required LibreOffice engine ${officeEngine}`)
     }
     if (process.platform === 'darwin') {

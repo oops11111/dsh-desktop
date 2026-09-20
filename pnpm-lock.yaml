@@ -2268,9 +2268,6 @@ importers:
       '@deepseek-ai/dsh-message-feedback':
         specifier: workspace:^
         version: link:../../feedback/message-feedback
-      '@deepseek-ai/dsh-office-to-pdf':
-        specifier: workspace:^
-        version: link:../../document/office-to-pdf
       '@deepseek-ai/dsh-session-log-export':
         specifier: workspace:^
         version: link:../../session-query/session-log-export
@@ -2341,9 +2338,6 @@ importers:
       '@deepseek-ai/dsh-typert-registry':
         specifier: workspace:^
         version: link:../../typert/registry
-      '@deepseek-ai/libreoffice-kit':
-        specifier: 0.0.1
-        version: 0.0.1
 
   packages/client/connection:
     dependencies:

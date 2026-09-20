@@ -123,8 +123,7 @@
     "commander": "^15.0.0",
     "open": "^11.0.0",
     "@deepseek-ai/dsh-api-terminal-controller": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-sidebar-terminal": "workspace:^",
-    "@deepseek-ai/dsh-office-to-pdf": "workspace:^"
+    "@deepseek-ai/dsh-client-ui-sidebar-terminal": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
@@ -143,7 +142,6 @@
     "@deepseek-ai/dsh-session-projection": "workspace:^",
     "@deepseek-ai/dsh-shell-env": "workspace:^",
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-typert-registry": "workspace:^",
-    "@deepseek-ai/libreoffice-kit": "0.0.1"
+    "@deepseek-ai/dsh-typert-registry": "workspace:^"
   }
 }

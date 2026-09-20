@@ -606,7 +606,14 @@ describe.skipIf(MODE === 'record')('web e2e: document preview through Files', ()
   })
 })
 
-describe.skipIf(MODE === 'record')('web e2e: Host Office preview', () => {
+// The shipped Web bundle no longer mounts office-to-pdf by default (its
+// LibreOffice engine is a Desktop payload cost the default composition
+// avoids). Wiring a real conversion pipeline back into this scaffold needs an
+// office-to-pdf declaration on the module-fallback dependency graph
+// (packages/boot/app-boot/src/profile.ts's profileDependencyNames walk), not
+// a cordis.patch.yml overlay row alone. The provider's own real-composition
+// coverage (packages/document/office-to-pdf/tests) is unaffected.
+describe.skip('web e2e: Host Office preview', () => {
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
