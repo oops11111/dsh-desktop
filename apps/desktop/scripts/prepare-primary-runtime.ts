@@ -2,7 +2,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { cp } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -49,11 +49,11 @@ async function pythonArchive(target: keyof typeof lock.targets, cache: string): 
  * @returns SHA-256 payload identity for installation reuse.
  */
 export function primaryRuntimePayloadDigest(target: keyof typeof lock.targets, runtimeLock: typeof lock, pnpmVersion: string): string {
-  const { pythonVersion, pythonRelease, nodeVersion, wheels, pythonPackages } = runtimeLock
+  const { pythonVersion, pythonRelease, wheels, pythonPackages } = runtimeLock
   // Identity preserves key order within the selected target, wheel records and distribution map, plus wheel-entry order.
   // Bump format when extraction or assembly changes payload bytes without changing locked inputs.
   return createHash('sha256').update(JSON.stringify({
-    format: 2, target, pythonVersion, pythonRelease, nodeVersion,
+    format: 3, target, pythonVersion, pythonRelease,
     artifact: runtimeLock.targets[target], wheels, pythonPackages, pnpm: pnpmVersion,
   })).digest('hex')
 }
@@ -103,19 +103,10 @@ export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = 
     const output = join(staging, 'payload')
     const dependencies = join(output, 'dependencies')
     mkdirSync(dependencies, { recursive: true })
-    const nodeFilename = `node-v${lock.nodeVersion}-${artifact.nodeArchive}`
-    const nodeArchive = await downloadPrimaryRuntimeAsset(`https://nodejs.org/dist/v${lock.nodeVersion}/${nodeFilename}`, artifact.nodeSha256, paths.downloads)
-    const unpackedNode = join(staging, 'node')
-    mkdirSync(unpackedNode)
-    if (target === 'win-x64') await extractZip(nodeArchive, { dir: unpackedNode })
-    else await extractTar({ file: nodeArchive, cwd: unpackedNode })
-    const nodeSource = join(unpackedNode, nodeFilename.replace(/\.(?:zip|tar\.gz)$/u, ''))
+    // Installation writes the Node launcher, which forwards to the Electron executable running it.
     mkdirSync(join(dependencies, 'node', 'bin'), { recursive: true })
     mkdirSync(join(dependencies, 'node', 'node_modules'))
     writeFileSync(join(dependencies, 'node', 'node_modules', 'README.txt'), 'Reserved for bundled Node packages. pnpm uses its default installation directories.\n')
-    cpSync(join(nodeSource, ...(target === 'win-x64' ? ['node.exe'] : ['bin', 'node'])),
-      join(dependencies, 'node', 'bin', target === 'win-x64' ? 'node.exe' : 'node'))
-    cpSync(join(nodeSource, 'LICENSE'), join(dependencies, 'node', 'LICENSE'))
     await extractTar({ file: await pythonArchive(target, paths.downloads), cwd: dependencies })
     const require = createRequire(import.meta.url)
     const pnpmManifest = require.resolve('pnpm')
@@ -128,7 +119,7 @@ export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = 
       arch: target === 'mac-arm64' ? 'arm64' : 'x64',
       payloadDigest: primaryRuntimePayloadDigest(target, lock, pnpm.version),
       pythonPackages: lock.pythonPackages,
-      components: { python: lock.pythonVersion, node: lock.nodeVersion, pnpm: pnpm.version },
+      components: { python: lock.pythonVersion, pnpm: pnpm.version },
     }
     const entries = workspaceDependencyPaths(output, manifest)
     for (const wheel of [...artifact.wheels, ...lock.wheels]) {
@@ -161,8 +152,8 @@ export function smokePrimaryRuntime(root: string): void {
   execFileSync(entries.python, ['-I', '-B', join(import.meta.dirname, 'smoke-primary-runtime.py'), JSON.stringify(manifest.pythonPackages),
     manifest.components.python, join(dirname(root), 'office-skills', 'scripts', 'check_office.py')], options)
   execFileSync(entries.python, ['-I', '-B', '-m', 'pip', 'check'], options)
-  execFileSync(entries.node, ['-e', `if (process.versions.node !== ${JSON.stringify(manifest.components.node)}) process.exit(1)`], options)
-  execFileSync(entries.node, [entries.pnpm, '--version'], options)
+  // The payload carries no Node: its launcher is written at installation, so the build host's own runs pnpm here.
+  execFileSync(process.execPath, [entries.pnpm, '--version'], options)
 }
 
 if (import.meta.main) await preparePrimaryRuntime()

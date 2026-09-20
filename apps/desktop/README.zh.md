@@ -20,7 +20,7 @@ macOS PNG 使用带留白的圆角底板，供传统 ICNS 打包使用，包含�
 
 Windows 签名打包保留有效的上游签名，并在执行冒烟检查前，为第一方运行时中未签名的 PE 可执行文件、DLL、Python 扩展和 Node 插件补签。每个新签名必须匹配配置的证书且带时间戳；已有签名无效、签名错误或验签错误都会停止本轮执行，不自动重试。electron-builder 只有在校验复制后运行时可执行文件的签名、且文件与已准备的源文件逐字节一致后，才保留其签名，避免复制资源时重复签名。检查覆盖 decimal、XML、LZMA、UUID、Pillow 和 lxml。开发、仅准备和未签名构建不使用硬件令牌，可能被 Windows 代码完整性策略阻止；任何构建模式都不会关闭该策略。冒烟检查通过不代表所有扩展或企业策略都兼容。
 
-Desktop 携带独立的 Python、Node.js 和 pnpm 分发包。Python 包含 python-docx、python-pptx、openpyxl、Pillow、lxml、XlsxWriter 及其完整依赖，不含 numpy 与 pandas。`load_workspace_dependencies` 工具首次使用时，将该产物离线安装到 `$DSH_HOME/dsh-runtimes/dsh-primary-runtime`（通常为 `~/.dsh/dsh-runtimes/dsh-primary-runtime`），并返回解释器、pnpm 脚本和库目录的绝对路径，以及记录内置分发包名称与版本的 `pythonDistributions`。版本报告不包含用户自行安装的包。Office 任务默认使用这些库，用户或工作区指令指定其他环境时遵循其要求。pnpm 脚本通过返回的 Node 可执行文件运行。返回的 Node 库目录为随包交付的库预留，不是 pnpm 的全局安装目录。
+Desktop 携带独立的 Python 和 pnpm 分发包，以及一个由安装过程指向应用自身可执行文件（Node 模式）的 Node 启动器。Python 包含 python-docx、python-pptx、openpyxl、Pillow、lxml、XlsxWriter 及其完整依赖，不含 numpy 与 pandas。`load_workspace_dependencies` 工具首次使用时，将该产物离线安装到 `$DSH_HOME/dsh-runtimes/dsh-primary-runtime`（通常为 `~/.dsh/dsh-runtimes/dsh-primary-runtime`），并返回解释器、pnpm 脚本和库目录的绝对路径，以及记录内置分发包名称与版本的 `pythonDistributions`。版本报告不包含用户自行安装的包。Office 任务默认使用这些库，用户或工作区指令指定其他环境时遵循其要求。pnpm 脚本通过返回的 Node 启动器运行。返回的 Node 库目录为随包交付的库预留，不是 pnpm 的全局安装目录。
 
 Desktop 默认注册 `office-docx`、`office-pptx` 和 `office-xlsx`。这些技能使用内置 Python 库创建文件和进行定点编辑，随后重新打开文件，并在交付前运行共享结构检查器。PowerPoint 的创建和编辑使用 python-pptx。技能资源复制到 ASAR 外的 `runtime/office-skills`，让 Python 可以读取检查器。可用的 `render_document` 工具可以补充视觉检查；缺少该工具不妨碍创作或交付。检查范围与限制见 [Office 技能包](../../packages/skill/skill-office/README.zh.md)。
 

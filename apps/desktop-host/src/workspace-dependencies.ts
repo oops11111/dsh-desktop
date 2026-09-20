@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config): void {
   })
   ctx.tools.register(defineTool({
     name: 'load_workspace_dependencies',
-    description: 'Get absolute paths to bundled Python, Node.js, pnpm, and library directories, plus bundled Python distribution versions. Python includes python-docx, python-pptx, openpyxl, Pillow, lxml, and XlsxWriter; it does not include numpy or pandas. Use these libraries for Office files unless the user or workspace instructions select another environment. Run pnpm with the returned Node executable and pnpm script path. This does not change PATH or package-manager settings.',
+    description: 'Get absolute paths to a Python interpreter, a Node launcher, pnpm, and library directories, plus bundled Python distribution versions. Python includes python-docx, python-pptx, openpyxl, Pillow, lxml, and XlsxWriter; it does not include numpy or pandas. Use these libraries for Office files unless the user or workspace instructions select another environment. Run pnpm with the returned Node executable and pnpm script path. This does not change PATH or package-manager settings.',
     parameters: {},
     output: {
       schema: {

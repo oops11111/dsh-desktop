@@ -23,11 +23,11 @@ async function fixture() {
   const root = join(directory, 'home', 'dsh-runtimes', 'dsh-primary-runtime')
   const manifest: PrimaryRuntimeManifest = {
     desktopVersion: '1.0.0', platform: process.platform === 'win32' ? 'win32' : 'darwin', arch: process.arch,
-    components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0' },
+    components: { python: '3.12.14', pnpm: '11.7.0' },
     pythonPackages: { 'python-docx': '1.2.0', 'python-pptx': '1.0.2', openpyxl: '3.1.5' },
   }
   const paths = workspaceDependencyPaths(source, manifest)
-  for (const path of [paths.python, paths.node, paths.pnpm]) {
+  for (const path of [paths.python, paths.pnpm]) {
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, 'interpreter')
   }
@@ -38,7 +38,7 @@ async function fixture() {
 }
 
 it.each(['win32', 'darwin'])('returns %s interpreter and package paths', (platform) => {
-  const manifest: PrimaryRuntimeManifest = { desktopVersion: '1', platform, arch: 'x64', components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0' } }
+  const manifest: PrimaryRuntimeManifest = { desktopVersion: '1', platform, arch: 'x64', components: { python: '3.12.14', pnpm: '11.7.0' } }
   const paths = workspaceDependencyPaths('/runtime', manifest)
   expect(paths.pythonDistributions).toEqual({})
   expect(paths.python).toBe(join('/runtime', 'dependencies', 'python', ...(platform === 'win32' ? ['python.exe'] : ['bin', 'python3'])))
@@ -53,6 +53,9 @@ it.skipIf(process.platform === 'linux')('installs offline, reuses the same relea
   expect(await installPrimaryRuntime(source, root)).toEqual(installed)
   expect(installed.pythonDistributions).toEqual(manifest.pythonPackages)
   expect(await readFile(join(installed.pythonPackages, 'user-package.py'), 'utf8')).toBe('user content')
+  const launcher = await readFile(installed.node, 'utf8')
+  expect(launcher).toContain(process.execPath)
+  expect(launcher).toContain('ELECTRON_RUN_AS_NODE')
   expect(process.env).toEqual(environment)
 })
 
