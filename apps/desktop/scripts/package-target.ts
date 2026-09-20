@@ -360,6 +360,9 @@ export async function packageTarget(
   ], buildEnv, REPOSITORY_ROOT)
   await execute(['run', 'prepare:runtime', ...(signPrimaryRuntime ? ['--defer-primary-runtime-smoke'] : [])], targetEnv)
   if (signPrimaryRuntime) await execute(['run', 'sign:primary-runtime'], electronBuilderEnv)
+  // Compression removes the loose PE files Windows code-signing (above) needs to walk and sign
+  // individually, so it always runs last against this platform's already-signed, smoke-tested tree.
+  if (target.platform === 'win32') await execute(['run', 'pack:primary-runtime'], targetEnv)
   await execute(['run', 'prepare:packages'], targetEnv)
   await execute(['run', 'prepare:dsh'], targetEnv)
   if (invocation.prepareOnly) return

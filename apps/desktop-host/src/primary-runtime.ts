@@ -1,7 +1,8 @@
 /** Offline installation and absolute paths for Desktop's bundled script dependencies. */
 
-import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, copyFile, cp, lstat, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { x as extractTar } from 'tar'
 
 /** Versions recorded by the Desktop build, independent of user-installed packages. */
 export interface PrimaryRuntimeManifest {
@@ -122,7 +123,15 @@ export async function installPrimaryRuntime(source: string, root: string): Promi
   }
   const staging = await mkdtemp(join(dirname(root), '.primary-runtime-'))
   try {
-    await cp(source, staging, { recursive: true, dereference: true })
+    // A packaged payload ships one compressed archive beside the loose manifest; an unpacked
+    // development payload still carries the loose dependencies tree this falls back to.
+    const archive = join(source, 'dependencies.tar.gz')
+    if (await exists(archive)) {
+      await extractTar({ file: archive, cwd: staging })
+      await copyFile(join(source, 'runtime.json'), join(staging, 'runtime.json'))
+    } else {
+      await cp(source, staging, { recursive: true, dereference: true })
+    }
     const paths = workspaceDependencyPaths(staging, manifest)
     await writeNodeLauncher(paths, manifest.platform === 'win32')
     for (const path of [paths.python, paths.node, paths.pnpm, paths.pythonPackages, paths.nodePackages]) await stat(path)

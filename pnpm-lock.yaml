@@ -620,6 +620,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../packages/core/tools
+      tar:
+        specifier: ^7.5.0
+        version: 7.5.22
 
   apps/web:
     devDependencies:

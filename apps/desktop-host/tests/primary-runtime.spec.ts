@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, expect, it } from 'vitest'
+import { c as createTar } from 'tar'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
@@ -37,6 +38,31 @@ async function fixture() {
   return { source, root, manifest, directory }
 }
 
+/** A source payload shaped like a packaged build: a compressed archive beside the loose manifest. */
+async function packedFixture() {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-primary-runtime-packed-'))
+  roots.push(directory)
+  const source = join(directory, 'resources')
+  const root = join(directory, 'home', 'dsh-runtimes', 'dsh-primary-runtime')
+  const manifest: PrimaryRuntimeManifest = {
+    desktopVersion: '1.0.0', platform: process.platform === 'win32' ? 'win32' : 'darwin', arch: process.arch,
+    components: { python: '3.12.14', pnpm: '11.7.0' },
+    pythonPackages: { 'python-docx': '1.2.0', 'python-pptx': '1.0.2', openpyxl: '3.1.5' },
+  }
+  const assembly = join(directory, 'assembly')
+  const paths = workspaceDependencyPaths(assembly, manifest)
+  for (const path of [paths.python, paths.pnpm]) {
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, 'interpreter')
+  }
+  await mkdir(paths.pythonPackages, { recursive: true })
+  await mkdir(paths.nodePackages, { recursive: true })
+  await mkdir(source, { recursive: true })
+  await createTar({ gzip: true, file: join(source, 'dependencies.tar.gz'), cwd: assembly }, ['dependencies'])
+  await writeFile(join(source, 'runtime.json'), JSON.stringify(manifest))
+  return { source, root, manifest, directory }
+}
+
 it.each(['win32', 'darwin'])('returns %s interpreter and package paths', (platform) => {
   const manifest: PrimaryRuntimeManifest = { desktopVersion: '1', platform, arch: 'x64', components: { python: '3.12.14', pnpm: '11.7.0' } }
   const paths = workspaceDependencyPaths('/runtime', manifest)
@@ -57,6 +83,17 @@ it.skipIf(process.platform === 'linux')('installs offline, reuses the same relea
   expect(launcher).toContain(process.execPath)
   expect(launcher).toContain('ELECTRON_RUN_AS_NODE')
   expect(process.env).toEqual(environment)
+})
+
+it.skipIf(process.platform === 'linux')('installs from a compressed source payload identically to a loose one', async () => {
+  const { source, root, manifest } = await packedFixture()
+  const installed = await installPrimaryRuntime(source, root)
+  expect(installed.pythonDistributions).toEqual(manifest.pythonPackages)
+  expect(await readFile(installed.python, 'utf8')).toBe('interpreter')
+  expect(await readFile(installed.pnpm, 'utf8')).toBe('interpreter')
+  const launcher = await readFile(installed.node, 'utf8')
+  expect(launcher).toContain(process.execPath)
+  expect(launcher).toContain('ELECTRON_RUN_AS_NODE')
 })
 
 it.skipIf(process.platform === 'linux')('replaces release components and recovers an interrupted directory swap', async () => {

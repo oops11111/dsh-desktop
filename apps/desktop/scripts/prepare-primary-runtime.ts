@@ -8,7 +8,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import extractZip from 'extract-zip'
-import { x as extractTar } from 'tar'
+import { c as createTar, x as extractTar } from 'tar'
 import { workspaceDependencyPaths, type PrimaryRuntimeManifest } from '../../desktop-host/src/primary-runtime.ts'
 import { resolveDesktopBuildTarget, resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
 import { scrubWindowsSigningEnvironment } from './windows-sign.mjs'
@@ -136,6 +136,19 @@ export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = 
   await prepareOfficeSkillAssets(join(dirname(hostRequire.resolve('@deepseek-ai/dsh-skill-office/package.json')), 'assets'),
     join(paths.runtime, 'office-skills'))
   if (!options.deferSmoke) smokePrimaryRuntime(join(paths.runtime, 'primary-runtime'))
+}
+
+/**
+ * Compress the assembled dependencies tree into one archive, replacing the loose files this build
+ * leaves behind so the packaged installer ships a smaller payload; `runtime.json` stays loose beside
+ * it for a fast read that never decompresses the archive. Windows and macOS code-signing require the
+ * loose PE and Mach-O files this directory carries before compression, so callers run this only after
+ * any required signing (and its post-signing smoke check) has already completed against this root.
+ * @param root - Fully assembled runtime directory; already signed and smoke-tested where required.
+ */
+export async function packPrimaryRuntime(root: string): Promise<void> {
+  await createTar({ gzip: true, file: join(root, 'dependencies.tar.gz'), cwd: root }, ['dependencies'])
+  rmSync(join(root, 'dependencies'), { recursive: true, force: true })
 }
 
 /**
