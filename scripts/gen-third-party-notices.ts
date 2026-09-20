@@ -100,17 +100,12 @@ const PYTHON_METADATA: Record<string, { license: string; repo: string; role?: st
   hatchling: { license: 'MIT', repo: 'https://github.com/pypa/hatch', role: 'build backend' },
   'et-xmlfile': { license: 'MIT', repo: 'https://foss.heptapod.net/openpyxl/et_xmlfile' },
   lxml: { license: 'BSD-3-Clause', repo: 'https://github.com/lxml/lxml' },
-  numpy: { license: 'BSD-3-Clause', repo: 'https://github.com/numpy/numpy' },
   openpyxl: { license: 'MIT', repo: 'https://foss.heptapod.net/openpyxl/openpyxl' },
-  pandas: { license: 'BSD-3-Clause', repo: 'https://github.com/pandas-dev/pandas' },
   pillow: { license: 'MIT-CMU', repo: 'https://github.com/python-pillow/Pillow' },
-  'python-dateutil': { license: 'Apache-2.0 OR BSD-3-Clause', repo: 'https://github.com/dateutil/dateutil' },
   'python-docx': { license: 'MIT', repo: 'https://github.com/python-openxml/python-docx' },
   'python-pptx': { license: 'MIT', repo: 'https://github.com/scanny/python-pptx' },
   pytest: { license: 'MIT', repo: 'https://github.com/pytest-dev/pytest', role: 'test-only' },
-  six: { license: 'MIT', repo: 'https://github.com/benjaminp/six' },
   'typing-extensions': { license: 'PSF-2.0', repo: 'https://github.com/python/typing_extensions' },
-  tzdata: { license: 'Apache-2.0', repo: 'https://github.com/python/tzdata' },
   xlsxwriter: { license: 'BSD-2-Clause', repo: 'https://github.com/jmcnamara/XlsxWriter' },
 }
 

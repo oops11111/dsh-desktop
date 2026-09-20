@@ -33,7 +33,7 @@ describe('THIRD_PARTY_NOTICES.md', () => {
   }, async () => {
     const generated = await render()
     expect(generated).toContain('It depends on the third-party software listed below.')
-    expect(generated).toContain(`| [\`numpy\`](https://github.com/numpy/numpy) | ${desktopRuntimeLock.pythonPackages.numpy} | BSD-3-Clause |`)
+    expect(generated).toContain(`| [\`lxml\`](https://github.com/lxml/lxml) | ${desktopRuntimeLock.pythonPackages.lxml} | BSD-3-Clause |`)
     expect(generated).toContain('## LibreOffice conversion kit')
     expect(generated).toContain('Recipients must have access to those corresponding sources and notices.')
     expect(readFileSync(resolve(root, 'THIRD_PARTY_NOTICES.md'), 'utf8'), 'stale notices — run `pnpm run gen-third-party-notices`').toBe(generated)
@@ -308,7 +308,7 @@ describe('parsePyprojectRequirements', () => {
 
 describe('collectPythonDependencies', () => {
   it('labels shared Python metadata in the Python-project context', () => {
-    const dependencies = collectPythonDependencies(['[project]\ndependencies = ["numpy", "pandas", "six", "tzdata"]\n'])
+    const dependencies = collectPythonDependencies(['[project]\ndependencies = ["lxml", "openpyxl", "pillow", "xlsxwriter"]\n'])
     expect(dependencies.map(({ role }) => role)).toEqual(Array(4).fill('Python project dependency'))
   })
 
