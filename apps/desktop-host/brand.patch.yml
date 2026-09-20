@@ -1,0 +1,9 @@
+# Candy's own sidebar brand: disable the stock single-slot occupant before mounting
+# Candy's equivalent, since sidebar.brand.mark/sidebar.brand.name are single-scope
+# slots and two occupants cannot share either seat.
+- id: ui-brand-official
+  disabled: true
+
+- insert:
+    - id: ui-brand-candy
+      name: '@deepseek-ai/dsh-client-ui-brand-candy'

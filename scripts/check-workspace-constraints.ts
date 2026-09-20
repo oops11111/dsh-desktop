@@ -63,6 +63,10 @@ const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh': ['lib/*.js', 'lib/types/*.d.ts'],
   '@deepseek-ai/dsh-desktop-host': [
     'lib/index.js',
+    // Candy's brand overlay: apps/desktop-host/src/index.ts loads this patch
+    // file at a path relative to its own installed location, so it travels
+    // with the package rather than through electron-builder extraResources.
+    'brand.patch.yml',
   ],
   // Sourcemaps stay out by payload policy; the worker-preview surface
   // (dist/preview.html and dist/preview/) backs opt-in experimental

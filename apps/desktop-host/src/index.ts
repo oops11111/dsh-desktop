@@ -20,7 +20,7 @@ async function main(): Promise<void> {
     profile: 'desktop',
     resolutionMode: process.argv[5] === 'runtime' ? 'runtime' : 'link',
     resolvedProfile: { profile, installAnchor },
-    patchFiles: [],
+    patchFiles: [join(import.meta.dirname, '..', 'brand.patch.yml')],
     args: ['--no-open', '--port', '19387'],
     ...(process.argv[6] === undefined ? {} : {
       packageManager: {

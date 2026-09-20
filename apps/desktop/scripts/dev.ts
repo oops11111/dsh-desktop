@@ -83,6 +83,8 @@ async function launchElectron(): Promise<void> {
 async function main(): Promise<void> {
   const { values } = parseArgs({ options: { 'skip-build': { type: 'boolean', default: false } } })
   if (!values['skip-build']) {
+    // Candy has its own identity, not DeepSeek's official one; set it directly for local builds too.
+    process.env.DSH_CLIENT_TITLE ??= 'Candy'
     await runPackageScript('build', REPOSITORY_ROOT)
     await runPackageScript('build', APP_ROOT)
   }
