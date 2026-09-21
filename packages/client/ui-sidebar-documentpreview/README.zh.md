@@ -1,5 +1,5 @@
 ---
-description: "右侧 Sidebar 的文档预览：共享文件加载与控件，可选 Markdown、代码、图片、PDF、Office 和 HTML 渲染器，并以纯文本兜底。"
+description: "右侧 Sidebar 的文档预览：共享文件加载与控件，可选 Markdown、代码、图片、PDF、Office、Word、表格和 HTML 渲染器，并以纯文本兜底。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-在右侧 Sidebar 预览可读文件，无需另开 tab 即可切换已注册的渲染器。Markdown 和代码接收累计文本页；PDF、HTML 和常见图片接收完整字节；未知文件扩展名使用纯文本。Office 文档在本地转换为 PDF。tab 负责加载、文件状态、渲染器选择、换行和重新载入，文档正文通过同一元数据注册表与子 slot 注册。Sidebar tab 的 kind 为 `text`。
+在右侧 Sidebar 预览可读文件，无需另开 tab 即可切换已注册的渲染器。Markdown 和代码接收累计文本页；PDF、HTML、常见图片、`.docx` 和 `.xlsx`/`.xls` 接收完整字节；未知文件扩展名使用纯文本。`.doc`、`.xls`、`.ppt` 和 `.pptx` 通过可选的 Host 引擎在本地转换为 PDF；`.docx` 和 `.xlsx`/`.xls` 改为直接在浏览器本地渲染，不经过 Host 往返。tab 负责加载、文件状态、渲染器选择、换行和重新载入，文档正文通过同一元数据注册表与子 slot 注册。Sidebar tab 的 kind 为 `text`。
 
 ## 目录
 
@@ -17,6 +17,7 @@ kind: "package-reference"
 - [地址](#addresses)
 - [怎么读](#how-it-reads)
 - [Office 预览](#office-preview)
+- [本地 Word 与表格预览](#local-word-and-spreadsheet-preview)
 - [导航](#navigation)
 - [模型体验](#model-experience)
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
@@ -61,7 +62,7 @@ PNG、JPEG、GIF、WebP、BMP、ICO 和 SVG 通过 Blob URL 在 `<img>` 静态�
 <a id="office-preview"></a>
 ## Office 预览
 
-将 `.doc`、`.docx`、`.xls`、`.xlsx`、`.ppt` 和 `.pptx` 打开为 PDF 预览，使用与 PDF 文件相同的加载状态、控件、取消和文本选择能力。[Host 提供方](../../document/office-to-pdf/README.zh.md)负责本地转换；无效文件、转换失败和超时会显示本地化消息。缺少 Host 服务时显示配置引导。
+将 `.doc`、`.docx`、`.xls`、`.xlsx`、`.ppt` 和 `.pptx` 打开为 PDF 预览，使用与 PDF 文件相同的加载状态、控件、取消和文本选择能力。[Host 提供方](../../document/office-to-pdf/README.zh.md)负责本地转换；无效文件、转换失败和超时会显示本地化消息。缺少 Host 服务时显示配置引导。这一注册对上述每个后缀都保持 `builtin` 档位，使 [下方纯浏览器 Word 与表格渲染器](#local-word-and-spreadsheet-preview) 默认接走 `.docx` 和 `.xlsx`/`.xls`；两者都注册时，下拉菜单仍会提供这个基于 Host 转换的实现作为备选。
 
 [Web bundle](../../bundle/web-app/README.zh.md) 以 `ui-sidebar-documentpreview` 挂载本包。通过该条目的 `office` 设置配置临时 Office 缓存；[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-client-ui-sidebar-documentpreview)定义可接受的值。设置注入到每个页面；修改 YAML 后重新加载浏览器页面。
 
@@ -86,6 +87,20 @@ Office 注册、加载、缓存和字体提示位于 `src/client/office/`。Offi
 
 </details>
 
+<a id="local-word-and-spreadsheet-preview"></a>
+## 本地 Word 与表格预览
+
+`.docx` 通过 [mammoth](https://github.com/mwilliamson/mammoth.js) 渲染，`.xlsx`/`.xls` 通过 [SheetJS](https://sheetjs.com) 渲染，两者都完全在浏览器内完成：不涉及 Host 服务、不使用转换缓存，`office.*` 设置对两者均不生效。两者都以注册表默认的 `extension` 档位注册，因而在相同后缀上胜过上方 `builtin` 档位的 Host 转换 Office 实现；下拉菜单仍会把该实现作为备选提供。两者都使用 `loading: 'bytes-complete'`，读取方式与 PDF 或 HTML 相同，并将转换后的文档渲染进一个 `sandbox` 属性为空的 iframe（不允许脚本、表单或同源访问）——比 HTML 渲染器的 `allow-scripts` 更严格，因为这两个库都不需要执行源文件中的任何脚本。`.docx` 或 `.xlsx`/`.xls` 解析失败时（扩展名有误、文件损坏、受密码保护），正文自身会显示本地化的失败消息，而非共享 owner 的读取失败提示行，因为字节读取本身仍然成功。
+
+表格渲染器一次显示一个工作表；工作表数量超过一个时，frame 上方出现标签行，切换标签不会触发新的文件读取。`.xls` 与 `.xlsx` 经由 SheetJS 同一入口解析。`.docx` 中的内嵌图片由 mammoth 默认转换器内联为 base64 `data:` URI。
+
+<details>
+<summary>Word 与表格实现——点击展开</summary>
+
+注册、转换与正文分别位于 `src/client/docx/` 与 `src/client/spreadsheet/`。两者的 `convert.ts` 都会在交给 mammoth 或 SheetJS 之前检查文件起始字节（`.docx`/`.xlsx` 为 ZIP 签名，`.xls` 为 OLE2 复合文件签名），因此改错扩展名的无关文件会快速失败并给出清晰消息，而不是库特有的报错，对 SheetJS 而言也不会被静默误解析成单元格文本。两个正文都置于 `React.lazy` 边界之后（`LazyDocxBody`/`LazySpreadsheetBody`），使体积各有数百 KB 的 mammoth 和 SheetJS 只在打开匹配文件时才加载，绝不进入本包的即时加载 bundle；两个正文都不导入另一个同样可从即时加载代码到达的包内模块，因为那样会把该模块拉进一个即时加载 bundle 最终也要 require 的 chunk。
+
+</details>
+
 <a id="navigation"></a>
 ## 导航
 
@@ -105,6 +120,7 @@ Office 注册、加载、缓存和字体提示位于 `src/client/office/`。Offi
 <a id="known-limitations-and-deferred-work"></a>
 - **预览而非编辑。** 查看器不提供文件编辑或共享搜索接口；目录地址以 `not-regular-file` 失败。未知扩展名使用纯文本读取，仍受其 UTF-8/NUL 检查限制。
 - **Office 转换限制。** 预览不启动原生 Office 编辑器，也不下载引擎。二进制 `.doc`、`.xls` 和 `.ppt` 文件不返回缺失字体诊断。转换保真度与资源限制由 [LibreOffice 提供方](../../document/office-to-pdf/README.zh.md)负责。
+- **本地 Word 与表格渲染并非像素级还原。** mammoth 和 SheetJS 是重排内容，而非还原分页布局、页眉页脚或 Word/Excel 支持的每种样式；没有缺失字体诊断，没有对应的 `.pptx` 实现，也不与宿主应用做实时主题同步（iframe 仅按 `prefers-color-scheme` 自行适配浅色/深色）。解析在主线程运行，因此超大文件可能短暂阻塞主线程；除 Host 的 `maxFileBytes` 外没有专用 Worker 或额外大小上限。
 - **文本顺序分页，完整文件受限。** 定位到较深处的源码行需要先加载此前各页；PDF、HTML 和图片必须取得 Host `maxFileBytes` 上限内的完整结果。
 - **字节视图不恢复滚动位置。** PDF、HTML 与图片的渲染器重新挂载或重新载入时可能回到顶部；图片适配面板宽度、不产生横向滚动，HTML iframe 的滚动属于其不透明浏览上下文。
 - **本地 HTML 依赖集合有限。** 只打包直接引用的经典 `.js` 脚本和 `.css` 样式表。浏览器解析的资源仍受浏览器源与网络规则限制；iframe 不获得运行时文件读取桥接。

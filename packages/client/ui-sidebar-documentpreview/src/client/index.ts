@@ -37,6 +37,8 @@ import { apply as registerImage } from './image/index.ts'
 import { apply as registerPdf } from './pdf/index.ts'
 import { apply as registerCode } from './code/index.ts'
 import { apply as registerOffice } from './office/index.ts'
+import { apply as registerDocx } from './docx/index.ts'
+import { apply as registerSpreadsheet } from './spreadsheet/index.ts'
 import { Config } from '../config.ts'
 
 // Values stay package-private unless another package needs them; the plugin
@@ -123,5 +125,7 @@ export function apply(ctx: ClientContext): void {
   registerImage(ctx)
   registerPdf(ctx)
   registerCode(ctx)
+  registerDocx(ctx)
+  registerSpreadsheet(ctx)
   registerOffice(ctx, config.office)
 }

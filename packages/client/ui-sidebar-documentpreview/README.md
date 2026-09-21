@@ -1,5 +1,5 @@
 ---
-description: "Document previews in the right Sidebar: shared file loading and controls, selectable Markdown, code, image, PDF, Office and HTML renderers, and plain-text fallback."
+description: "Document previews in the right Sidebar: shared file loading and controls, selectable Markdown, code, image, PDF, Office, Word, spreadsheet, and HTML renderers, and plain-text fallback."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Preview readable files in the right Sidebar and choose among registered renderers without opening another tab. Markdown and code receive accumulated text pages; PDF, HTML, and common images receive complete bytes; unknown file extensions use plain text. Office documents convert locally to PDF. The tab owns loading, file status, renderer selection, wrap, and reload, while document bodies register through the same metadata registry and child slot. The Sidebar tab kind is `text`.
+Preview readable files in the right Sidebar and choose among registered renderers without opening another tab. Markdown and code receive accumulated text pages; PDF, HTML, common images, `.docx`, and `.xlsx`/`.xls` receive complete bytes; unknown file extensions use plain text. `.doc`, `.xls`, `.ppt`, and `.pptx` convert locally to PDF through an optional Host engine; `.docx` and `.xlsx`/`.xls` render locally in the browser instead, with no Host round trip. The tab owns loading, file status, renderer selection, wrap, and reload, while document bodies register through the same metadata registry and child slot. The Sidebar tab kind is `text`.
 
 ## Table of Contents
 
@@ -17,6 +17,7 @@ Preview readable files in the right Sidebar and choose among registered renderer
 - [Addresses](#addresses)
 - [How it reads](#how-it-reads)
 - [Office preview](#office-preview)
+- [Local Word and spreadsheet preview](#local-word-and-spreadsheet-preview)
 - [Navigation](#navigation)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
@@ -61,7 +62,7 @@ Initial reads, additional pages, and HTML/PDF/image preparation share an icon-on
 <a id="office-preview"></a>
 ## Office preview
 
-Open `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, and `.pptx` as PDF previews with the same loading state, controls, cancellation, and selectable text as PDF files. The [Host provider](../../document/office-to-pdf/README.md) performs local conversion; invalid files, conversion failures, and timeouts receive localized messages. Missing Host services show configuration guidance.
+Open `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, and `.pptx` as PDF previews with the same loading state, controls, cancellation, and selectable text as PDF files. The [Host provider](../../document/office-to-pdf/README.md) performs local conversion; invalid files, conversion failures, and timeouts receive localized messages. Missing Host services show configuration guidance. This registration stays at `builtin` priority for every one of those suffixes so that [the browser-only Word and spreadsheet renderers](#local-word-and-spreadsheet-preview) below take `.docx` and `.xlsx`/`.xls` by default; the dropdown still offers this Host-conversion implementation as an alternative wherever both are registered.
 
 The [Web bundle](../../bundle/web-app/README.md) mounts this package as `ui-sidebar-documentpreview`. Configure its transient Office cache through that entry's `office` settings; the [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-client-ui-sidebar-documentpreview) defines accepted values. Settings are embedded in each served page; reload the browser page after changing YAML.
 
@@ -86,6 +87,20 @@ The shared `documentFileBytes()` helper decodes ordinary file and converted PDF 
 
 </details>
 
+<a id="local-word-and-spreadsheet-preview"></a>
+## Local Word and spreadsheet preview
+
+`.docx` renders through [mammoth](https://github.com/mwilliamson/mammoth.js) and `.xlsx`/`.xls` through [SheetJS](https://sheetjs.com), both entirely in the browser: no Host service, no conversion cache, and no `office.*` settings apply to either. Each registers at the registry's default `extension` priority, so it wins over the `builtin`-priority Host-conversion Office implementation above for the same suffix; the dropdown still offers that implementation as an alternative. Both use `loading: 'bytes-complete'`, read the same way as PDF or HTML, and render the converted document in an iframe with an empty `sandbox` attribute (no scripts, forms, or same-origin access) — stricter than the HTML renderer's `allow-scripts`, since neither library needs to run any script from the source file. A `.docx` or `.xlsx`/`.xls` file that fails to parse (wrong extension, corruption, password protection) shows a localized failure message from the body itself, not the shared owner's read-failure line, since the byte read itself still succeeds.
+
+The spreadsheet renderer shows one sheet at a time; a workbook with more than one sheet gets a tab row above the frame, and switching tabs re-renders without a new file read. `.xls` parses through the same SheetJS entry as `.xlsx`. Embedded images in a `.docx` are inlined as base64 `data:` URIs by mammoth's default converter.
+
+<details>
+<summary>Word and spreadsheet implementation — click to expand</summary>
+
+Registration, conversion, and the body each live in `src/client/docx/` and `src/client/spreadsheet/`. `convert.ts` in each checks the file's leading bytes (ZIP for `.docx`/`.xlsx`, the OLE2 Compound File signature for `.xls`) before handing them to mammoth or SheetJS, so a renamed unrelated file fails fast with a clear message instead of a library-specific error or, for SheetJS, a silently misparsed single-cell sheet. Both bodies are behind a `React.lazy` boundary (`LazyDocxBody`/`LazySpreadsheetBody`) so mammoth and SheetJS — several hundred KB each — load only once a matching file is opened, never in this package's eager bundle; neither body imports another in-package module also reachable from eager code, since doing so pulls that module into a chunk the eager bundle ends up requiring too.
+
+</details>
+
 <a id="navigation"></a>
 ## Navigation
 
@@ -105,6 +120,7 @@ No direct effect; what the user reads here never enters a model request.
 <a id="known-limitations-and-deferred-work"></a>
 - **Preview, not editing.** The viewers provide no file editing or shared search interface; a directory address fails with `not-regular-file`. Unknown extensions use the plain-text reader and remain subject to its UTF-8/NUL checks.
 - **Office conversion limits.** The preview does not launch native Office editors or download an engine. Binary `.doc`, `.xls`, and `.ppt` files return no missing-font diagnostics. Conversion fidelity and resource limits belong to the [LibreOffice provider](../../document/office-to-pdf/README.md).
+- **Local Word and spreadsheet rendering is not page-accurate.** mammoth and SheetJS reflow content rather than reproducing paginated layout, headers/footers, or every style Word or Excel supports; there is no missing-font diagnostic, no `.pptx` equivalent, and no live theme sync with the host application (the iframe styles itself for light/dark by `prefers-color-scheme` alone). Parsing runs on the main thread, so a very large file can block it briefly; there is no dedicated Worker or size cap beyond the Host's `maxFileBytes`.
 - **Sequential text and bounded complete files.** Deep source lines require the preceding pages; PDF, HTML, and images require a complete result within the Host's `maxFileBytes` cap.
 - **Byte-view scroll state is not restored.** PDF, HTML, and images can return to the top when their renderer remounts or reloads; images fit the pane's width and never scroll horizontally, and HTML iframe scrolling belongs to its opaque browsing context.
 - **Finite local HTML dependencies.** Only direct classic `.js` and stylesheet `.css` references are packed. Browser-resolved resources retain browser origin and network restrictions; no runtime file-read bridge is exposed to the iframe.

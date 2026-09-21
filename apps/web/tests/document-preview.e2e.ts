@@ -87,7 +87,11 @@ describe.skipIf(MODE === 'record')('web e2e: document preview through Files', ()
   beforeAll(async () => {
     outsideRoot = await mkdtemp(join(tmpdir(), 'dsh-preview-outside-'))
     scaffold = await launchWebScaffold({ replayFixture: FIXTURE, paceMs: 5, compareReplaySession: false, extraOverlayPath: PAGING_PATCH })
-    browser = await chromium.launch()
+    // CI uses Playwright's pinned browser. A developer may point this one
+    // scenario at an installed Chromium when the matching browser download
+    // is temporarily unavailable.
+    const executablePath = process.env.DSH_PLAYWRIGHT_EXECUTABLE_PATH
+    browser = await chromium.launch(executablePath === undefined ? {} : { executablePath })
     page = await newEnglishPage(browser)
     tripwire = watchConsole(page)
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
@@ -159,7 +163,12 @@ describe.skipIf(MODE === 'record')('web e2e: document preview through Files', ()
       writeFile(join(cwd, 'user-unit.pdf'), pdfFixture(2)),
       ...[90, 180, 270].map(rotation => writeFile(join(cwd, `rotated-${rotation}.pdf`), pdfFixture(4, rotation))),
       writeFile(join(cwd, 'selection.pdf'), selectionPdfFixture()),
-      ...['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].map(extension => writeFile(join(cwd, `unavailable.${extension}`), Buffer.from('PK\u0003\u0004OFFICE_BINARY_PREVIEW'))),
+      ...['doc', 'xls', 'ppt', 'pptx'].map(extension => writeFile(join(cwd, `unavailable.${extension}`), Buffer.from('PK\u0003\u0004OFFICE_BINARY_PREVIEW'))),
+      // docx/xlsx have a local, Host-independent renderer (mammoth/SheetJS), so a same-looking
+      // zip-signature-but-invalid payload for them fails locally rather than reporting "unavailable".
+      ...['docx', 'xlsx'].map(extension => writeFile(join(cwd, `local-invalid.${extension}`), Buffer.from('PK\u0003\u0004OFFICE_BINARY_PREVIEW'))),
+      writeFile(join(cwd, 'local.docx'), realOfficeBytes('docx')),
+      writeFile(join(cwd, 'local.xlsx'), realOfficeBytes('xlsx')),
       writeFile(join(cwd, 'clip.mp4'), Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70])),
     ])
 
@@ -562,7 +571,7 @@ describe.skipIf(MODE === 'record')('web e2e: document preview through Files', ()
 
     const officeMenus: number[] = []
     const configurationGuide = 'Read failed: Office previews are unavailable. Enable the document preview service on the computer running DeepSeek Harness.'
-    for (const extension of ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']) {
+    for (const extension of ['doc', 'xls', 'ppt', 'pptx']) {
       await openFile(`unavailable.${extension}`)
       expect(await preview.locator('[data-document-viewer-menu]').count()).toBe(0)
       await preview.getByText(configurationGuide, { exact: true }).waitFor({ timeout: 15_000 })
@@ -573,10 +582,61 @@ describe.skipIf(MODE === 'record')('web e2e: document preview through Files', ()
     await successShot(page, 'office-unavailable')
     sections.push([
       '## Office unavailable', '',
-      `- DOC, DOCX, XLS, XLSX, PPT, PPTX viewer menus: ${officeMenus.join(' | ')}`,
+      `- DOC, XLS, PPT, PPTX viewer menus: ${officeMenus.join(' | ')}`,
       `- Guidance: ${configurationGuide}`,
       '- Binary text shown: false',
       '- Plain-text option and viewer picker: hidden',
+    ].join('\n'))
+
+    // docx/xlsx have a local, Host-independent renderer registered alongside the Host-conversion
+    // Office implementation, so they show a viewer menu (two candidates) defaulting to the local one.
+    await openFile('local.docx')
+    await expect.poll(() => viewer.innerText()).toBe('Word document')
+    const docxFrame = preview.locator('[data-docx-preview]')
+    await docxFrame.waitFor({ timeout: 15_000 })
+    expect(await docxFrame.getAttribute('sandbox')).toBe('')
+    const docxDocument = page.frameLocator('[data-docx-preview]')
+    await docxDocument.getByText('Office preview 中文文档', { exact: true }).waitFor({ timeout: 15_000 })
+    await successShot(page, 'office-local-docx')
+
+    await openFile('local.xlsx')
+    await expect.poll(() => viewer.innerText()).toBe('Spreadsheet')
+    const xlsxFrame = preview.locator('[data-spreadsheet-preview]')
+    await xlsxFrame.waitFor({ timeout: 15_000 })
+    expect(await xlsxFrame.getAttribute('sandbox')).toBe('')
+    const xlsxDocument = page.frameLocator('[data-spreadsheet-preview]')
+    await xlsxDocument.getByText('Office preview 中文文档', { exact: true }).waitFor({ timeout: 15_000 })
+    // A single-sheet workbook shows no sheet tabs.
+    expect(await preview.getByRole('tab').count()).toBe(0)
+    await successShot(page, 'office-local-xlsx')
+
+    // The dropdown still offers the Host-conversion implementation; selecting it without a Host
+    // renderer reports the same configuration guidance as the doc/xls/ppt/pptx case above.
+    await viewer.click()
+    await page.getByRole('menuitem', { name: 'Office document', exact: true }).click()
+    await preview.getByText(configurationGuide, { exact: true }).waitFor({ timeout: 15_000 })
+    await viewer.click()
+    await page.getByRole('menuitem', { name: 'Word document', exact: true }).click()
+    await docxFrame.waitFor({ timeout: 15_000 })
+
+    await openFile('local-invalid.docx')
+    // A conversion failure is caught and rendered by the body itself, distinct from the shared
+    // "Read failed: ..." wrapper the owner uses for an actual file-read failure.
+    await preview.getByText('This Word document could not be previewed. It may be damaged, password protected, or have the wrong extension.', { exact: true })
+      .waitFor({ timeout: 15_000 })
+    expect(await preview.locator('[data-docx-preview]').count()).toBe(0)
+
+    await openFile('local-invalid.xlsx')
+    await preview.getByText('This spreadsheet could not be previewed. It may be damaged, password protected, or have the wrong extension.', { exact: true })
+      .waitFor({ timeout: 15_000 })
+    expect(await preview.locator('[data-spreadsheet-preview]').count()).toBe(0)
+    sections.push([
+      '## Local Office preview', '',
+      '- local.docx viewer: Word document (mammoth, no Host round trip)',
+      '- local.xlsx viewer: Spreadsheet (SheetJS, no Host round trip)',
+      '- Both frames sandboxed with no scripts: true',
+      '- Switching the dropdown to Office document without a Host renderer: unavailable guidance',
+      '- local-invalid.docx / local-invalid.xlsx: local read-failure message, not "unavailable"',
     ].join('\n'))
 
     await openFile('notes.unknown')

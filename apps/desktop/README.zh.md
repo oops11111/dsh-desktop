@@ -145,7 +145,7 @@ macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS �
 
 Desktop 在本地打包工作区包，并通过目标捆绑的 Node 和 pnpm 安装外部依赖。[Desktop 文件策略](scripts/runtime-file-policy.ts)随后在签名和完整性封装前过滤不可变的 `resources/app.asar/dsh/node_modules` 副本。它排除 TypeScript 声明、已识别的 JavaScript/CSS/TypeScript source map、TypeScript 构建缓存、Domino 测试目录、选定的原生编译器输出和其他平台的 node-pty 预构建文件。它保留运行时 JavaScript、原生模块及其 DLL/EXE 辅助文件、WASM、未知资源、许可证和 notices。该策略不修改 npm tarball、捆绑的包管理器或用户安装的插件文件。
 
-[Office 转换提供方](../../packages/document/office-to-pdf/README.zh.md)携带目标已声明的原生引擎；kit 未声明匹配原生目标时携带 WASM 引擎。准备阶段在打包前拒绝缺少目标引擎的情况。引擎资源、许可证和 notices 保留在运行时依赖树中。
+[Office 转换提供方](../../packages/document/office-to-pdf/README.zh.md)不属于 Desktop 默认装机内容；默认的 Web bundle 组合不包含它，因此工作区未声明 `@deepseek-ai/libreoffice-kit` 时，`prepare:dsh` 会跳过引擎复制及其打包检查。重新引入该提供方的构建会携带目标已声明的原生引擎，kit 未声明匹配原生目标时携带 WASM 引擎，此时准备阶段才会在打包前拒绝缺少目标引擎的情况；引擎资源、许可证和 notices 保留在运行时依赖树中。缺少该提供方时，`.doc`、`.xls`、`.ppt` 和 `.pptx` 预览会显示配置引导；`.docx` 和 `.xlsx`/`.xls` 改为通过 [mammoth 和 SheetJS](../../packages/client/ui-sidebar-documentpreview/README.zh.md#local-word-and-spreadsheet-preview) 在浏览器本地预览，不涉及引擎或 Host 往返。
 
 打包应用运行编译后的 JavaScript 和预生成的 Typert 元数据，不编译 TypeScript 插件。源码级调试导航和编辑器声明仍可从开发包中获取。[复制规则测试](tests/runtime-file-policy.spec.ts)覆盖排除项和保留资源；`prepare:dsh` 在 Host smoke 和最终清单验证之前，使用 Electron RunAsNode 执行[产物 smoke](tests/fixtures/runtime-payload-smoke.mjs)。
 

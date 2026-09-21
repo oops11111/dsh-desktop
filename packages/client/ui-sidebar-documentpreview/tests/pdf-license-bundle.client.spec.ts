@@ -56,10 +56,13 @@ describe('published PDF.js licenses', () => {
       const client = run('tar', ['-xOf', resolve(packageRoot, packed.filename), 'package/lib/client.js'], packageRoot, task.timeout)
       const pdf = run('tar', ['-xOf', resolve(packageRoot, packed.filename), 'package/lib/client.pdf.js'], packageRoot, task.timeout)
       expect([...client.matchAll(/require\.async\("(\.\/client[^"/]*\.js)"\)/gu)].map(match => match[1]))
-        .toEqual(['./client.pdf.js'])
-      expect(client).not.toMatch(/\brequire\("\.\/client[^"/]*\.js"\)/u)
+        .toEqual(['./client.pdf.js', './client.DocxBody.js', './client.SpreadsheetBody.js'])
+      // Every lazy chunk shares rolldown's small CJS/ESM interop runtime, hoisted into its own
+      // chunk once more than one exists; no other plain (eager) require of a sibling chunk is allowed.
+      expect([...client.matchAll(/\brequire\("(\.\/client[^"/]*\.js)"\)/gu)].map(match => match[1]))
+        .toEqual(['./client.rolldown-runtime.js'])
       expect([...pdf.matchAll(/require\("(\.\/client[^"/]*\.js)"\)/gu)].map(match => match[1]))
-        .toEqual([])
+        .toEqual(['./client.rolldown-runtime.js'])
       expect(client).not.toContain('//! Bundled PDF.js license notices')
       expect(client).not.toContain('/pdfjs-dist/')
       expect(pdf).toContain('//! Bundled PDF.js license notices')
