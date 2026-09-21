@@ -62,4 +62,4 @@ Desktop 通过现有的目标 Node pnpm 依赖安装流程安装 kit，并保留
 
 原生与 WASM 的保真度仍取决于构建、源文件格式、已安装字体及平台字体发现。没有覆盖字体就无法恢复缺失字形。图片分辨率限额不限制图片解码或总进程内存。WASM 为大型字体集合和 CFF 字体保留有界内存增长与受检查的栈空间；致命运行时中止会阻止后续 C++ 清理调用。宏与文档链接更新由实际支持的 LOKit 选项和固定源码补丁禁用；这不构成操作系统沙箱。
 
-[提供方测试](../../../../packages/document/office-to-pdf/tests/provider.spec.ts)、[Loader 组合](../../../../packages/bundle/web-app/tests/document-preview.spec.ts)和[浏览器场景](../../../../apps/web/tests/document-preview.e2e.ts)负责 DSH 生命周期、授权与展示证据。引擎验收还需要真实 DOC/DOCX/XLS/XLSX/PPT/PPTX 转换、外部 PDF 文本、字体、页数与图片检查、迁移安装和损坏包拒绝，以及同输入的原生/WASM 性能样本。模拟辅助进程和微基准不能证明这些结果。各目标的真实构建机与 Desktop 安装包需要独立验收；一个本地架构成功不能证明整个矩阵。
+[提供方测试](../../../../packages/document/office-to-pdf/tests/provider.spec.ts)和[浏览器场景](../../../../apps/web/tests/document-preview.e2e.ts)负责 DSH 生命周期、授权与展示证据；Web bundle 的默认组合已不再挂载该提供方（其 LibreOffice 引擎是默认组合要避免的 Desktop 装机成本），因此 Loader 组合证据转移到该提供方自身的测试中。引擎验收还需要真实 DOC/DOCX/XLS/XLSX/PPT/PPTX 转换、外部 PDF 文本、字体、页数与图片检查、迁移安装和损坏包拒绝，以及同输入的原生/WASM 性能样本。模拟辅助进程和微基准不能证明这些结果。各目标的真实构建机与 Desktop 安装包需要独立验收；一个本地架构成功不能证明整个矩阵。
